@@ -1,0 +1,17 @@
+Task 1
+1. delete the non-important R output, just show the central results
+2. make the decimals less
+3. analase more related to MEMORY, EXFUNC and PROCSPEED
+4. explain more clearly about what the step() function dose
+
+Task 2 
+1. Do not collapse the data points, just use the original data
+2. remove the part of random effect
+
+
+Task 3
+1. Not only using the visual way of assessment, use more quantitative comparison
+2. Keep the remarks the same as the Task2
+
+Task 4
+1. Try to investigate what roles age and years since diagnosis may play

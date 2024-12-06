@@ -1,0 +1,391 @@
+---
+title: "CM2018: Seminar 1 2024 - example solutions file - for release"
+output: html_seminar1teacherfile
+---
+### CM2018 SEMINAR 1 2024
+
+### TASK 1: DAS-28 DATASET
+##  INSTRUCTIONS
+A parallel clinical study was conducted to test a new experimental treatment (KTH001) against control (standard treatment with placebo) treatment in 30 RA patients per study arm. The data set, 'data_task1.csv', contains DAS28 measures in the two study groups.
+
+Develop and present a data analysis pipeline (a set of relevant assessments of the data along with a method selection approach).
+
+Analyse the clinical data set. Present your approach in a stepwise manner and the results of your chosen method(s).
+
+##   EXAMPLE ANSWER
+Interpretation of task: develop an analysis pipeline. Carry out statistical analysis whether the response following experimental treatment differs from control.
+
+Hypotheses:
+H0: responses following experimental and control treatment do not differ.
+H1: responses following experimental and control treatment differ.
+
+Example approach:
+- Explore dataset visually and through summary statistics.
+- Determine statistical analysis:
+  - check normality,
+  - are groups paired?
+  - check equal variance between groups.
+- Decide on test.
+- Analyse.
+- Draw conclusions.
+
+Conclusion:
+The experimental treatment group has statistically significant lower DAS28 scores as compared to the control group.
+The ability to conclude if the experimental treatment significantly improves DAS28 scores as compared to control treatment is somewhat limited by the study design.
+Here a parallel study was carried out.
+
+#    DATA ANALYSIS: FULL SCRIPT
+#    NOTE: this is an Rmd-script file, to run press the 'play' button in the upper right corner of the script.
+#.   Plots and output will be produced underneath the script. 
+```{r}
+## set working directory to current file
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+## install relevant packages
+# e.g., install.packages("library_name")
+
+## load libraries
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+library(car)
+
+## import and attach data from .csv file
+data_t1 <- read.csv("data_task1.csv")
+attach(data_t1)
+
+## calculate summary statistics
+summary(data_t1)
+sd_placebo <- sd(data_t1$placebo)
+sd_interv <- sd(data_t1$intervention)
+
+## reshape data for plotting (lib: reshape2)
+ datat1_mod <- melt(data_t1, measure.vars=c('placebo','intervention'),
+                   variable.name = 'group',
+                   value.name = 'DAS28')
+
+### DATA EXPLORATION
+## plotting data, examples (lib: ggplot2)
+# scatter plot, raw data
+length_dat <- nrow(data_t1)
+
+plot(c(rep(1,length_dat),rep(2,length_dat)),datat1_mod$DAS28, xaxt='n', xlab = "group", ylab = "DAS28 [score]")
+axis(1, at=1:2, labels=c("placebo","intervention"))
+
+# boxplots
+ggplot(datat1_mod, aes(x=as.factor(group), y=DAS28)) +
+  geom_boxplot(fill="blue", alpha=0.2) +
+  xlab("Groups") +
+  ylab("DAS28 [score]")
+
+# density plots
+ggplot(data_t1, aes(x=placebo)) +
+    geom_density(fill="blue", color="black", alpha=0.8)
+
+ggplot(data_t1, aes(x=intervention)) +
+    geom_density(fill="red", color="black", alpha=0.8)
+
+# density plots, combined
+  ggplot(datat1_mod, aes(x=DAS28, color=group, fill=group)) +
+    geom_density(alpha=0.7)
+
+# histogram
+  ggplot(datat1_mod, aes(x=DAS28, fill=group)) +
+    geom_histogram( color="#e9ecef", alpha=0.5, position = 'identity') +
+    scale_fill_manual(values=c("blue", "red")) +
+    labs(fill="")
+
+### FORMAL NORMALITY TESTS
+## test normality of data
+# 1) look at the above plots, does the data look normal?
+# 2) q-q plot (lib: car)
+qqPlot(data_t1$placebo)
+qqPlot(data_t1$intervention)
+
+# 3) formal test of normality
+# Shapiro-Wilk test(other alternatives include Kolmogorov-Smirnov, Anderson-Darling, etc. but SW
+# tends to have higher power, ref: Ghasemi & Zahediasl 2012 - PMID: 23843808)
+# interpretation: data can be assumed to be normal if p > 0.05
+shapiro.test(data_t1$placebo)
+shapiro.test(data_t1$intervention)
+
+### TESTING FOR EQUAL VARIANCES
+## test for equal variance (homogeneity)
+# interpretation: no significant difference in variance if p > 0.05
+var.test(data_t1$placebo,data_t1$intervention, alternative="two.sided")
+
+## ALTERNATIVE: carry out t-test of normally distributed data (unpaired)
+# e.g., equal variance
+t.test(data_t1$placebo,data_t1$intervention, var.equal = TRUE)
+
+## NONPARAMETRIC ALTERNATIVE: carry out nonparametric t-test (unpaired)
+# Wilcoxon test (unpaired)
+wilcox.test(data_t1$placebo,data_t1$intervention)
+
+## OTHER ALTERNATIVES: e.g., regression analysis
+lmodel <- lm(DAS28 ~ group, data = datat1_mod)
+summary(lmodel)
+
+detach(data_t1)
+
+
+```
+
+### TASK 2
+##  INSTRUCTIONS
+Due to the favourable safety profile of KTH001, a larger clinical study is being planned for the candidate drug.
+Assuming that the data in task 1 is normally distributed, carry out an analysis to assess the impact of sample size (number of patients included
+per study arm) and the impact of effect size on study power.
+
+What suggestions can you make regarding the design of the larger clinical study?
+
+#   EXAMPLE ANSWER
+To analyse the impact of sample size and effect size we need to resample varying study participant numbers and analyse (see script below).
+
+examples presented here:
+1. We can draw 20 random population samples from the two distributions and carry out t-tests.
+   Here we can clearly see how p-values for the statistical test varies for randomly sampled data from the same distribution.
+   
+2. Examining the confidence intervals gives a good indication of how much the difference will vary across samples.
+3. We can then vary sample size and effect size and calculate the impact on study power. This is a useful method for study design.
+   We could for instance conclude that given a sample size of approx 60 study participants and above we should approach a power of
+   around 0.8. As the study in task 2 is quite small we might want to account for some uncertainty here, therefore we can also
+   test the impact of for example effect size. 
+
+#    DATA ANALYSIS: FULL SCRIPT
+```{r}
+## load libraries
+library(pwr)
+
+## calculate parameters
+#  placebo/control group: mean and standard deviation
+placebo_x <- mean(data_t1$placebo)
+placebo_sd <- sd(data_t1$placebo) 
+
+#  intervention/experimental treatment group: mean and standard deviation 
+interv_x <- mean(data_t1$intervention)
+interv_sd <- sd(data_t1$intervention)
+
+## resample from group distributions, for example 20 times
+n_resampl <- 20
+
+pval_out <- rep(0, n_resampl)
+ll_out <- rep(0, n_resampl)
+ul_out <- rep(0, n_resampl)
+
+placebo_resampl <- replicate(n_resampl, rnorm(20, mean = placebo_x, sd = placebo_sd))
+interv_resampl <- replicate(n_resampl, rnorm(20, mean = interv_x, sd = interv_sd))
+
+## carry out repeated t-tests on the simulated population samples
+for (i in 1:n_resampl) {
+  ttest_temp <- t.test(placebo_resampl[1:n_resampl,i],interv_resampl[1:n_resampl,i], var.equal = TRUE)
+  pval_out[i] <- ttest_temp$p.value
+  ll_out[i] <- ttest_temp$conf.int[1] 
+  ul_out[i] <- ttest_temp$conf.int[2] 
+}
+
+## plot results: "a dance of the p-values" - for example, see an excellent video by Geoff Cumming: https://www.youtube.com/watch?v=5OL1RqHrZQ8
+plot(pval_out,1:n_resampl, xlim = c(0,1), main = "Dance of the p-Values", xlab = "p-value", ylab = "iteration")
+abline(v=0.05, col="red")
+
+## plot confidence intervals of the original dataset
+ciplot1 <- plot(ll_out,1:n_resampl, type="l", xlim = c(-3,3), main = "Why Confindence Intervals are Useful", xlab = "CI", 
+                ylab = "iteration")
+lines(ul_out,1:n_resampl)
+abline(v=0.0, col="red")
+
+## investigate impact of n study participants and effect size on power
+# effect size (Cohen's d) = ( mu1 - mu2 ) / sd_pooled
+# sd_pooled = sqrt( ( sd1^2 + sd2^2 )/2 )
+effectsize_t2 <- (placebo_x - interv_x) / sqrt((placebo_sd^2 + interv_sd^2)/2 )
+
+n_table <- seq(3, 100, 1)
+
+# carry out power calculations
+pwr_n1 <- pwr.t.test(d = effectsize_t2, n = n_table, sig.level = 0.05)
+
+plot(n_table, pwr_n1$power, xlab = "N study participants", ylab = "Power")
+
+
+effectsize_table <- effectsize_t2*seq(0.1,2,0.1)
+pwr_n2 <- pwr.t.test(d = effectsize_table, n = n_resampl, sig.level = 0.05)
+plot(effectsize_table, pwr_n2$power, xlab = "Effect Size", ylab = "Power")
+
+
+```
+###   TASK3
+## INSTRUCTIONS
+Additional biomarker data on CRP has been made available for the two study arms in the clinical study detailed in Task 1.
+In addition, CRP data has been made available for a separate study investigating an alternative candidate drug (named KTH002).
+
+Compare the data across the three treatment arms. Carry out a statistical analysis. 
+What conclusions can be drawn?
+
+(comment: data inspired by Macakova et al 2022, "The dynamics of extracellular DNA associates with treatment response in patients with
+rheumatoid arthritis", Scientific reports 12:21099. URL: https://www.nature.com/articles/s41598-022-23954-8)
+
+## SUGGESTED ANSWER
+For example, we can test:
+H0: there is no significant difference in CRP between the three groups. 
+H1: there is a statistically significant difference in CRP between the three groups.
+
+1. Data exploration: look at summary statistics and plot out the data.
+2. E.g., examine data for:
+   - normality, 
+   - is it paired/unpaired?
+   - equal variances?
+3. Determine statistical analysis.
+4. Carry out analysis:
+   In this case data is non-normal, upaired, unequal variances.
+   We could for example use Kruskal-Wallis test with a post-hoc test.
+   
+Conclusions:
+CRP is statistically significantly different in the intervention group 2 as compared to the control group.
+
+   
+#    DATA ANALYSIS: FULL SCRIPT
+```{r}
+## set working directory to current file
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+## load libraries
+library(DescTools)
+
+## import data from .csv file
+data_crp <- read.csv("data_task3_crp.csv")
+attach(data_crp)
+
+## reshape data for plotting (lib: reshape2)
+datacrp_mod <- melt(data_crp, measure.vars=c('crp_placebo','crp_intervention_1','crp_intervention_2'))
+
+## data exploration
+summary(data_crp)
+
+# boxplot
+plot(datacrp_mod$variable,datacrp_mod$value, xlab = "Group", ylab = "CRP [U]")
+
+# density plots, combined
+  ggplot(datacrp_mod, aes(x=value, color=variable, fill=datacrp_mod$variable)) +
+    geom_density(alpha=0.7) +
+    xlab("CRP [U]")
+
+# qqplots
+# 2) q-q plot (lib: car)
+qqPlot(data_crp$crp_placebo, ylab = "Placebo group: CRP [U]")
+qqPlot(data_crp$crp_intervention_1, ylab = "Interv. group 1: CRP [U]")
+qqPlot(data_crp$crp_intervention_2, ylab = "Interv. group 2: CRP [U]")
+
+# testing equal variances across the three groups 
+# F-test: two groups normal
+# Bartlett's test: two or more groups normal
+# Levene's test: alternative to Bartlett's for non-normal
+# Fligner-Killeen's test: very robust for non-normal
+fligner.test(value ~ variable, datacrp_mod)
+
+## determining statistical test
+# non-normal (data is actually sampled from a log-normal distribution),
+# three groups, unpaired
+# unequal variance
+
+## statistical analysis
+# nonparametric test: Kruskal-Wallis
+kruskal.test(value ~ variable, data = datacrp_mod)
+
+# for the log-transformed data we could for exampel do -> t-test, anova
+logresponse <- log(datacrp_mod$value)
+summary(aov(logresponse ~ variable, data = datacrp_mod))
+
+DunnettTest(logresponse, datacrp_mod$variable)
+
+# Other alternatives might include:
+# generalised linear regression
+# linear regression, anova
+
+detach(data_crp)
+
+```
+
+
+###   TASK4
+Finally, individual drug concentration-time data has been sent over from the bioanalysis unit.
+Explore different ways of visualising the data in the csv-file data_drugconcstime.csv.
+
+## EXAMPLE ANSWER
+For example, we can create scatter plots and spaghetti plots of the indvidual profiles over time.
+We can calculate summary parameters, such as:
+ - maximum concentration (Cmax),
+ - AUC: the area under the curve (AUC),
+ - Dose normalised AUC,
+ - Clearance (CL; a measure of elimination flux of drug),
+ 
+We can then plot the summary metrics against individual variables, such as bodyweight, body surface area,
+and glomerular filtration rate. Here, dose-normalised AUC (and CL) appears associated with GFR.
+This suggests that individuals with lower kidney function have higher drug exposure and might need reduced dosing 
+compared to individuals with higher kidney function.
+
+#    DATA ANALYSIS: FULL SCRIPT
+```{r}
+library(dplyr)
+library(caTools)
+
+# Concentration-time data is based on clinical data from https://nlmixr2.org 
+data_pct <- read.csv("conctimedata_reduced.csv")
+attach(data_pct)
+
+summary(data_pct)
+
+# simple scatter, all data
+plot(TIME,DV, xlab = "Time [h]", ylab = "Concentration [mg/L]")
+
+# spaghetti plot, all data
+ggplot(data_pct, aes(TIME, DV, group = ID, color = ID)) + 
+  geom_point() + 
+  geom_line() +
+  xlab("Time [h]") +
+  ylab("Concentration [mg/L]")
+
+# some simple scatter conc plots based with variables, e.g.:
+plot(BSA,DV, xlab = "Body Surface Area [m^2]", ylab = "Concentration [mg/L]")
+plot(WGT,DV, xlab = "Bodyweight [kg]", ylab = "Concentration [mg/L]")
+
+# Here follows some examples on how to summarise the individual pC-t profiles:
+# Cmax, AUC, AUC/Dose, Clearance=Dose/AUC ("elimination flux of drug")
+n_indiv <- max(data_pct$ID,na.rm = TRUE)
+
+Cmax <- rep(0, n_indiv)
+AUC <- rep(0, n_indiv)
+AUCnorm <- rep(0, n_indiv)
+CL <- rep(0, n_indiv)
+
+wgt_id <- rep(0, n_indiv)
+hgt_id <- rep(0, n_indiv)
+bsa_id <- rep(0, n_indiv)
+age_id <- rep(0, n_indiv)
+gfr_id <- rep(0, n_indiv)
+dose_id <- rep(0, n_indiv)
+
+for (i in 1:n_indiv) {
+  data_id <- filter(data_pct, ID == i)
+  
+  dose_id[i] <- data_id$DOSE[1]
+  wgt_id[i] <- data_id$WGT[1]
+  hgt_id[i] <- data_id$HGT[1]
+  bsa_id[i] <- data_id$BSA[1]
+  age_id[i] <- data_id$AGE[1]
+  gfr_id[i] <- data_id$GFR[1]
+  
+  Cmax[i] <- max(data_id$DV, na.rm = TRUE)
+  AUC[i] <- trapz(data_id$TIME,data_id$DV)
+  AUCnorm[i] <- AUC[i] / dose_id[i]
+  CL[i] <- dose_id[i] / AUC[i]
+  
+}
+
+# some examples of simple plots
+plot(wgt_id, AUCnorm, xlab = "Bodyweight [kg]", ylab = "Dose-normalised AUC")
+plot(gfr_id, AUCnorm, xlab = "Glomerular filtration rate [mL/min]", ylab = "Dose-normalised AUC")
+
+plot(gfr_id, CL, xlab = "Glomerular filtration rate [mL/min]", ylab = "CL [L/h]")
+
+
+```

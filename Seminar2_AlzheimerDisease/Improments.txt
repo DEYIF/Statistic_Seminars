@@ -1,0 +1,11 @@
+Task 2
+The conclusions of normally distributed
+
+Task 3
+GAM model: Generative Additive Model
+
+Try some mathmetic function that originally looks like the distribution
+
+Task 4
+plot the data together
+plot adding the diagnosis years
