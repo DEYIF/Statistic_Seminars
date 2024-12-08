@@ -50,20 +50,22 @@ pie(diagnosis,labels)
 pie(rater1,labels)
 pie(rater2,labels)
 
-# between diagnosis and raters
 # metrics and confusion matrix 
+# between diagnosis and raters
 test1 <- get_Metrics(data$Patient_Diagnosis,data$Rater1)
 print(test1$confusion_matrix)
 test2 <- get_Metrics(data$Patient_Diagnosis,data$Rater2)
 print(test2$confusion_matrix)
-
 # between two raters
 test_agree <- get_Metrics(data$Rater1,data$Rater2)
 agree_matrix <- test_agree$confusion_matrix
+print(agree_matrix)
+
 # kappa value 
 data_2col <- data.frame(Rater1 = data$Rater1,Rater2 = data$Rater2)
 result <- kappa2(data_2col)
 print(result)
+
 # McNemar's test
 # binom.test(c(agree_matrix[2,1],agree_matrix[1,2]))
 agree_matrix_2dim <- get_2dim_matrix(agree_matrix)
