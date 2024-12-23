@@ -67,25 +67,30 @@ result <- kappa2(data_2col)
 print(result)
 
 # McNemar's test
-# binom.test(c(agree_matrix[2,1],agree_matrix[1,2]))
 agree_matrix_2dim <- get_2dim_matrix(agree_matrix)
 result <- mcnemar.test(agree_matrix_2dim)
 print(result)
 
 # Test difference in sensitivity/specificity
-# For sensitivity, look at the subpopulation of diseased subjects
-subpop_diseased <- data.frame(data[which(data$Patient_Diagnosis == 0),])
-test_subdis <- get_Metrics(subpop_diseased$Rater1,subpop_diseased$Rater2)
-subdis_matrix_2dim <- get_2dim_matrix(test_subdis$confusion_matrix)
-print(subdis_matrix_2dim)
-result <- mcnemar.test(subdis_matrix_2dim)
-print(result)
+test1 <- get_Metrics(data$Patient_Diagnosis,data$Rater1)
+print(test1)
+test2 <- get_Metrics(data$Patient_Diagnosis,data$Rater2)
+print(test2)
 
-# For specificity, look at the subpopulation of healthy subjects.
-subpop_healthy <- data.frame(data[which(data$Patient_Diagnosis == 1),])
+
+
+# McNemar's test
+subpop_diseased <- data.frame(data[which(data$Patient_Diagnosis == 1),])
+test_subdis <- get_Metrics(subpop_diseased$Rater1,subpop_diseased$Rater2)
+print(test_subdis)
+subdis_matrix_2dim <- get_2dim_matrix(test_subdis$confusion_matrix)
+result_subdis <- mcnemar.test(subdis_matrix_2dim)
+print(result_subdis)
+
+subpop_healthy <- data.frame(data[which(data$Patient_Diagnosis == 0),])
 test_subheal <- get_Metrics(subpop_healthy$Rater1,subpop_healthy$Rater2)
+print(test_subheal)
 subheal_matrix_2dim <- get_2dim_matrix(test_subheal$confusion_matrix)
-print(subheal_matrix_2dim)
-result <- mcnemar.test(subheal_matrix_2dim)
-print(result)                      
+result_subheal <- mcnemar.test(subheal_matrix_2dim)
+print(result_subheal)                      
                                   

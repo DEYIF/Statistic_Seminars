@@ -74,6 +74,9 @@ summary_model <- summary(model)
 print("\nOrdered Logistic Regression Results:")
 print(summary_model)
 
+# odds ratios and confidence intervals
+exp(cbind(OR = coef(model), confint(model)))
+
 # 4. 可视化
 # Stage distribution plot
 p1 <- ggplot(data, aes(x = Stage)) +

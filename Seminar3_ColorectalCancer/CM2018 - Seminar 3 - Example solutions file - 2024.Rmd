@@ -1,0 +1,358 @@
+
+### CM2018 SEMINAR 3 2024
+### GENERAL INSTRUCTIONS
+Written solutions to all the tasks must be submitted before the deadline [DATE-TIME] (as pdf files in Canvas, preferably including the most important parts of your code).
+
+You are also expected to prepare an oral presentation of your solution for each of the tasks. The presentation should aim at taking 15 minutes, in order to leave room for questions and discussion. At the seminar, a member of your group (randomly chosen by the teacher) will be asked to present the solution.
+
+We expect each of you to spend around 15h on these tasks; please plan your time and meetings keeping this in mind.
+
+Please note that the course book (and the lectures) are not your only sources of information. There are lots of information available on the Internet about statistics as well as R and its possibilities, and you are very much encouraged to try and find methods not mentioned in the book or the lectures.
+
+### BACKGROUND
+Colorectal cancer (CRC), one of the most deadly cancer forms, has been projected to increase in incidence in the coming decades. Further, an increase has been observed in the incidence of CRC in younger adults. 
+
+Treatment success and cure of CRC is highly dependent upon early detection. However, early detection remains challenging due to inability to distinguish symptoms from other disease (e.g., gastrointestinal disease). CRC has a high rate of reoccurence and emergence of treatment resistance.
+
+You are part of a team of clinical data modellers in the theme of CRC. It is your task to analyse and interpret generated clinical study data.
+
+### TASK 1: Colorectal cancer detection
+##  INSTRUCTIONS
+A routine screening tool for CRC could aid early detection of disease and potentially lead to improved treatment success.
+
+A study has been carried out in 710 individuals to develop a screening method for colorectal cancer based on routine bio-analysis data from primary care.
+The dataset (data_task1.csv) contains contains a classifier of CRC (termed dependent variable, 'DV', in the dataset) and a number of biomarkers explained in the table below.
+
+Your task is to: 
+- develop a model for diagnosing CRC based on the collected information.
+- diagnose model performance.
+- assess the viability of implementing the model in clinical practice.
+
+[data table included in seminar task description on Canvas]
+
+##   EXAMPLE ANSWER
+Carry out multiple logistic regression using, for example glm, binomial.
+
+#   DATA ANALYSIS: FULL SCRIPT
+```{r}
+## set working directory to current file
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+## install packages
+# e.g., install.packages("library_name")
+
+## load libraries
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(corrplot)
+library(PerformanceAnalytics)
+
+library(pROC)
+library(caret)
+library(glmnet)
+
+## import data from .csv file
+data_t1 <- read.csv("data_task1.csv")
+attach(data_t1)
+
+## calculate summary statistics
+summary(data_t1)
+
+## plots
+# correlation matrices
+datat1_corr <- cor(data_t1)
+corrplot(datat1_corr)
+
+# plot boxplots
+boxplot(data_t1$ALT ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "ALT [U]")
+boxplot(data_t1$AST ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "AST [U]")
+boxplot(data_t1$GGT ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "GGT [U]")
+boxplot(data_t1$TC ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "TC [U]")
+boxplot(data_t1$TG ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "TG [U]")
+boxplot(data_t1$HDL ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "HDL [U]")
+boxplot(data_t1$LDL ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "LDL [U]")
+boxplot(data_t1$CRP ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "CRP [U]")
+boxplot(data_t1$APOA1 ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "APOA1 [U]")
+boxplot(data_t1$LPA ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "LPA [U]")
+boxplot(data_t1$CEA ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "CEA [U]")
+boxplot(data_t1$WBC ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "WBC [U]")
+boxplot(data_t1$RBC ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "RBC [U]")
+boxplot(data_t1$NEU ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "NEU [U]")
+boxplot(data_t1$LYM ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "LYM [U]")
+boxplot(data_t1$MONO ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "MONO [U]")
+boxplot(data_t1$HGB ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "HGB [U]")
+boxplot(data_t1$PLT ~ data_t1$DV, xlab = "CRC (yes=1, no=1)", ylab = "PLT [U]")
+
+# model of CRC:
+# Alternative 1:
+# the dependent variable is categorical, binomial. To model this we need to carry out generalised linear regression.
+# this could be done using, for example the GLM function.
+# On multiple regression: there is no "best approach" for exploring variables to include.
+glm_m1 = glm(DV ~ CEA + LPA + HDL + HGB + LPA + PLT + CRP + NEU + GGT + LDL + TG + LYM + ALT, family = binomial, data = data_t1)
+summary(glm_m1)
+
+# Alternative approach:
+# We could perform regularised regression using Ridge/Lasso/ElasticNet.
+# this could be done using the glmnet package: 
+# cv.glmnet(data, alpha = n, family = "binomial")
+
+# roc curve
+m1_roc <- roc(data_t1$DV,predict(glm_m1, data_t1, type = "response")) 
+plot(m1_roc)
+
+# metrics
+# AUC roc curve
+pred_m1 <- predict(glm_m1, newdata = data_t1, type="response")
+roc1 <- roc(data_t1$DV, pred_m1)
+AUC1 = auc(roc1)
+
+x_coord <- which.max(roc1$specificities+roc1$sensitivities)
+roc1$sensitivities[x_coord]
+roc1$specificities[x_coord]
+roc1$thresholds[x_coord]
+
+# interpretation: 1 is perfect prediction, 0.5 is completely random.
+# in this case we have an excellent prediction with an AUC of 0.98.
+# best threshold: 0.68, sensitivity: 0.87, specificity: 0.97
+
+# confusion matrix
+bin_resp <- ifelse(pred_m1 > 0.68, 1, 0)
+confusionMatrix(as.factor(bin_resp), as.factor(data_t1$DV))
+
+# interpretation: 
+# the confusion matrix calculates TP, FP, FN, TN.
+# kappa: agreement between classification and true values. Kappa of 1 is 
+#       perfect agreement.
+# McNemar's test: testing homogeneity between the two predicted classes.
+#       Nonsignificant means no difference. 
+# sensitivity: number of samples correctly predicted to be in the positive class.
+# specificity: number of samples correctly predicted to be in the negative class.
+# accuracy: number of correct predictions divided by total. 
+
+detach(data_t1)
+
+```
+
+### TASK 2: CRC staging
+##  INSTRUCTIONS
+CRC prevalence has increased in younger adults and is expected to continue to increase in the coming years.
+
+To further investigate causes of late stage CRC detection, a study was carried out in 200 individuals to assess the impact of age (in years), ethnicity, living status (partnered or alone), and site of detected cancer (right colon, left colon and rectum) and how these impact CRC stage (I-IV) at the time of diagnosis.
+
+- Analyse the dataset for any trends in CRC stage.
+- What recommendations would you propose based on the data analysis?
+
+#   EXAMPLE ANSWER
+Ordinal logistic regression.
+
+```{r}
+## load libraries
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(corrplot)
+library(ordinal)
+library(MASS)
+## import data from .csv file
+data_t2 <- read.csv("data_task2.csv")
+attach(data_t2)
+
+# example: ordinal model of data
+m1_ordinal <- polr(as.factor(STAGE) ~ AGE + ETHN + SITE + PART, data = data_t2, Hess = TRUE)
+summary(m1_ordinal)
+
+# odds ratios and confidence intervals
+exp(cbind(OR = coef(m1_ordinal), confint(m1_ordinal)))
+
+# example 2: ordinal model of data
+m2_ordinal <- clm(as.factor(STAGE) ~ AGE + ETHN + SITE + PART, data = data_t2,  Hess = TRUE)
+summary(m2_ordinal)
+
+residuals(m2_ordinal, type = "deviance")
+nominal_test(m2_ordinal)
+
+# Can perform Brant test for homogeneity between classes on the ordinal scale, using for example
+# library(brant), function brant. See: https://cran.r-project.org/web/packages/brant/brant.pdf
+
+# Can assess performance using Hosmer-Lemeshow test.
+
+detach(data_t2)
+
+```
+
+## TASK 3: linear mixed-effects of pharmacokinetic data
+CRC is commonly treated with surgery followed by chemotherapy. Previous studies have observed that women experience toxicity to higher degree than men during chemotherapy. 
+
+A clinical study was carried out to assess the concentration-time profiles of fluorouracil in a patient group consisting of 45 participants receiving a fixed intravenous bolus dose of the drug.
+
+The data file, data_task3.csv, contains the following information: indvidual concentrations (DV; ), time of observation (Time), Dose (Dose), body weight (BW), sex (SEX) and age (AGE).
+
+- Develop a model of the log-transformed concentration over time. 
+- Investigate if any effectors on drug exposure.
+- What conclusions can you draw?
+
+
+# SUGGESTED ANSWER
+
+```{r}
+
+## load libraries
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+## load libraries
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(corrplot)
+library(lme4)
+library(jtools)
+library(lmerTest)
+library(truncnorm)
+library(caTools)
+
+## import data from .csv file
+data_t3 <- read.csv("data_task3.csv")
+attach(data_t3)
+
+# log-transform the dependent variable
+data_t3$LOGDV <- log(data_t3$DV)
+
+## examine the dataset
+# scatterplot of individual concentration time data
+plot(data_t3$Time,data_t3$DV, xlab = "Time [h]", ylab = "Conc. [mg/L]")
+
+# spaghetti plot:
+ggplot(data_t3, aes(Time, DV, group = ID, color = ID)) + 
+  geom_point() + 
+  geom_line() + 
+  xlab("Time [h]") +
+  ylab("Concentration [mg/L]")
+
+# spaghetti plot - Log-transformed DV:
+ggplot(data_t3, aes(Time, LOGDV, group = ID, color = ID)) + 
+  geom_point() + 
+  geom_line() + 
+  xlab("Time [h]") +
+  ylab("Log-Concentration [mg/L]")
+
+# Summary calculations (see example solutions, Seminar 1 Task 4)
+# Cmax, AUC, AUC/Dose, Clearance=Dose/AUC
+n_indiv <- max(data_t3$ID,na.rm = TRUE)
+
+Cmax <- rep(0, n_indiv)
+AUC <- rep(0, n_indiv)
+AUCnorm <- rep(0, n_indiv)
+CL <- rep(0, n_indiv)
+
+dose_id <- rep(0, n_indiv)
+wgt_id <- rep(0, n_indiv)
+age_id <- rep(0, n_indiv)
+sex_id <- rep(0, n_indiv)
+
+for (i in 1:n_indiv) {
+  data_id <- filter(data_t3, ID == i)
+  
+  dose_id[i] <- data_id$Dose[1]
+  wgt_id[i] <- data_id$Bw[1]
+  age_id[i] <- data_id$Age[1]
+  sex_id[i] <- data_id$Sex[1]
+  
+  Cmax[i] <- max(data_id$DV, na.rm = TRUE)
+  AUC[i] <- trapz(data_id$Time,data_id$DV)
+  AUCnorm[i] <- AUC[i] / dose_id[i]
+  CL[i] <- dose_id[i] / AUC[i]
+  
+}
+
+## Visual data exploration:
+#  BW -> AUC (higher BW, lower exposure)
+plot(wgt_id, AUC, xlab = "Bodyweight [kg]", ylab = "AUC")
+#  BW -> CL (higher BW, higher elimination)
+plot(wgt_id, CL, xlab = "Bodyweight [kg]", ylab = "CL [L/h]")
+#  Sex -> AUC (0: female, 1: male) -> sex female, higher exposure
+boxplot(AUC ~ sex_id, xlab = "Sex (0: female, 1: male)", ylab = "AUC")
+# Sex -> BW -> sex female, lower bodyweight, higher exposure
+boxplot(wgt_id ~ sex_id, xlab = "Sex (0: female, 1: male)", ylab = "Bodyweight [kg]")
+
+# model data: repeated-measures -> mixed-effects model.
+# log-transformed DV allows linear models
+# we can test a fixed effects model to get a clearer idea of the issue of 
+# dependencies between observations:
+m0_fe <- lm(LOGDV ~ Time, data = data_t3)
+plot(data_t3$LOGDV, m0_fe$residuals, xlab = "Predicted", ylab = "Residual error")
+# we observe weird effects indicative of clustering, individual data points are not
+# strictly independent.
+
+# log-transformation linearises data allowing linear mixed-effects.
+# a good starting point could be:
+m1_lme <- lmer(LOGDV ~ Time + (1 + Time | ID), data = data_t3)
+summ(m1_lme)
+summary(m1_lme)
+summ(m1_lme)
+ranova(m1_lme)
+plot(m1_lme, xlab = "Predicted", ylab = "Residual error")
+
+# Then, we might go further to also look at the effect of Bw and Sex:
+m2_lme <- lmer(LOGDV ~ Time + Bw + Sex + (1 + Time | ID), data = data_t3)
+summary(m2_lme)
+summ(m2_lme)
+ranova(m2_lme)
+plot(m2_lme, xlab = "Predicted", ylab = "Residual error")
+
+# Since these are time dependent curves we might expect there to be an interaction with time.
+# We do not expect students to do this: 
+m3_lme <- lmer(LOGDV ~ Time*Bw*Sex + (1 + Time | ID), data = data_t3)
+
+summary(m3_lme)
+summ(m3_lme)
+ranova(m3_lme)
+plot(m3_lme, xlab = "Predicted", ylab = "Residual error")
+
+# Finally we can test competing models against each other
+anova(m1_lme,m2_lme,m3_lme)
+# Conclusion:
+# Based on the log likelihood model 3 appears to be the best out of these three. 
+
+detach(data_t3)
+
+```
+
+## TASK 4: Clinical study of control vs. experimental treatment
+A clinical study was carried out to investigate the impact of a novel experimental treatment on overall survival as compared to the gold-standard control treatment. 
+
+In the data file, data_task4.csv, you will find survival data for the control and treatment arms.
+Carry out analyse the efficacy of the experimental treatment vs. control.
+
+## EXAMPLE ANSWER
+```{r}
+## set working directory to current file
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+# load libraries
+library(survival)
+
+## import data from .csv file
+data_t4 <- read.csv("data_task4.csv")
+attach(data_t4)
+
+# Display the first few rows of the dataset
+head(data_t4)
+
+# Fit a Cox proportional hazards model
+attach(data_t4)
+
+# carry out survival analysis
+dat_surv <- Surv(Time, Status, type = "right")
+dat_survfit1 <- survfit(dat_surv ~ Group)
+plot(dat_survfit1, xlab = "Time [days]", ylab = "Survival")
+
+m1_cox <- coxph(dat_surv ~ Group)
+summary(m1_cox)
+
+detach(data_t4)
+
+```
